@@ -2,17 +2,41 @@
 using namespace std;
 
 char shiftLetter(char c, int shift) {
-    if (c >= 'a' && c <= 'z') {
-        return 'a' + ((c - 'a' + shift) % 26 + 26) % 26;
-    } else if (c >= 'A' && c <= 'Z') {
-        return 'A' + ((c - 'A' + shift) % 26 + 26) % 26;
+    while (shift < 0) {
+        shift = shift + 26;
     }
+    while (shift >= 26) {
+        shift = shift - 26;
+    }
+
+    if (c >= 'a' && c <= 'z') {
+        int position = c - 'a';
+        position = position + shift;
+        if (position >= 26) {
+            position = position - 26;
+        }
+        return 'a' + position;
+    }
+
+    if (c >= 'A' && c <= 'Z') {
+        int position = c - 'A';
+        position = position + shift;
+        if (position >= 26) {
+            position = position - 26;
+        }
+        return 'A' + position;
+    }
+
     return c;
 }
 
 int letterToShift(char k) {
-    if (k >= 'a' && k <= 'z') return k - 'a';
-    if (k >= 'A' && k <= 'Z') return k - 'A';
+    if (k >= 'a' && k <= 'z') {
+        return k - 'a';
+    }
+    if (k >= 'A' && k <= 'Z') {
+        return k - 'A';
+    }
     return 0;
 }
 
@@ -24,13 +48,13 @@ string caesarEncrypt(string text, int key) {
     string result = "";
     int n = text.size();
     for (int i = 0; i < int(n); i++) {
-        result += shiftLetter(text[i], key);
+        result = result + shiftLetter(text[i], key);
     }
     return result;
 }
 
 string caesarDecrypt(string text, int key) {
-    return caesarEncrypt(text, 26 - (key % 26));
+    return caesarEncrypt(text, -key);
 }
 
 // ============================================================
@@ -39,33 +63,47 @@ string caesarDecrypt(string text, int key) {
 
 string streamCipherEncrypt(string text, string key) {
     string result = "";
+    int keyIndex = 0;
+
     for (int i = 0; i < (int)text.size(); i++) {
-        char keyChar = key[i % key.size()]; // repeat the key as needed
+        char keyChar = key[keyIndex];
         int shift = letterToShift(keyChar);
-        result += shiftLetter(text[i], shift);
+        result = result + shiftLetter(text[i], shift);
+
+        keyIndex = keyIndex + 1;
+        if (keyIndex >= (int)key.size()) {
+            keyIndex = 0;
+        }
     }
     return result;
 }
 
 string streamCipherDecrypt(string text, string key) {
     string result = "";
+    int keyIndex = 0;
+
     for (int i = 0; i < (int)text.size(); i++) {
-        char keyChar = key[i % key.size()];
+        char keyChar = key[keyIndex];
         int shift = letterToShift(keyChar);
-        result += shiftLetter(text[i], -shift);
+        result = result + shiftLetter(text[i], -shift);
+
+        keyIndex = keyIndex + 1;
+        if (keyIndex >= (int)key.size()) {
+            keyIndex = 0;
+        }
     }
     return result;
 }
 
 // ============================================================
-// 3. ONE-TIME PAD
+// 3. ONE-TIME PAD 
 // ============================================================
 
 string onePadEncrypt(string text, string pad) {
     string result = "";
     for (int i = 0; i < (int)text.size(); i++) {
-        int shift = letterToShift(pad[i]); // pad must be >= text length
-        result += shiftLetter(text[i], shift);
+        int shift = letterToShift(pad[i]);
+        result = result + shiftLetter(text[i], shift);
     }
     return result;
 }
@@ -74,7 +112,7 @@ string onePadDecrypt(string text, string pad) {
     string result = "";
     for (int i = 0; i < (int)text.size(); i++) {
         int shift = letterToShift(pad[i]);
-        result += shiftLetter(text[i], -shift);
+        result = result + shiftLetter(text[i], -shift);
     }
     return result;
 }
@@ -83,59 +121,67 @@ string onePadDecrypt(string text, string pad) {
 // 4. AUTOKEY CIPHER
 // ============================================================
 
-string autoKeyEncrypt(string text, vector<int> keyShifts) {
+string autoKeyEncrypt(string text, string key) {
     string result = "";
-    vector<int> fullShifts = keyShifts;
-    for (char c : text) fullShifts.push_back(letterToShift(c));
+    string fullKey = key + text;
 
     for (int i = 0; i < (int)text.size(); i++) {
-        result += shiftLetter(text[i], fullShifts[i]);
+        int shift = letterToShift(fullKey[i]);
+        result = result + shiftLetter(text[i], shift);
     }
     return result;
 }
 
-string autoKeyDecrypt(string text, vector<int> keyShifts) {
+string autoKeyDecrypt(string text, string key) {
     string result = "";
-    vector<int> fullShifts = keyShifts;
+    string fullKey = key;
 
     for (int i = 0; i < (int)text.size(); i++) {
-        int shift = fullShifts[i];
-        char plain = shiftLetter(text[i], -shift);
-        result += plain;
-        fullShifts.push_back(letterToShift(plain));
+        int shift = letterToShift(fullKey[i]);
+        char plainChar = shiftLetter(text[i], -shift);
+        result = result + plainChar;
+        fullKey = fullKey + plainChar;
     }
     return result;
 }
 
-vector<int> parseKeyToShifts(const string &keyInput) {
-    vector<int> shifts;
-    bool hasSpace = keyInput.find_first_of(" \t") != string::npos;
+string convertKeyInputToLetters(string keyInput) {
+    string key = "";
+    int i = 0;
 
-    if (hasSpace) {
-        stringstream ss(keyInput);
-        string token;
-        while (ss >> token) {
-            bool isNumber = !token.empty();
-            for (size_t j = 0; j < token.size(); j++) {
-                char c = token[j];
-                if (!isdigit((unsigned char)c) && !(c == '-' && j == 0)) { isNumber = false; break; }
-            }
-            if (isNumber && token != "-") {
-                int num = stoi(token);
-                shifts.push_back(((num % 26) + 26) % 26);
-            } else {
-                for (char c : token) {
-                    if (isalpha((unsigned char)c)) shifts.push_back(letterToShift(c));
-                }
-            }
+    while (i < (int)keyInput.size()) {
+        char c = keyInput[i];
+
+        if (c == ' ' || c == '\t') {
+            i = i + 1;
+            continue;
         }
-    } else {
-        for (char c : keyInput) {
-            if (isdigit((unsigned char)c)) shifts.push_back(c - '0');
-            else if (isalpha((unsigned char)c)) shifts.push_back(letterToShift(c));
+
+        if (isdigit(c)) {
+            string digits = "";
+            while (i < (int)keyInput.size() && isdigit(keyInput[i])) {
+                digits = digits + keyInput[i];
+                i = i + 1;
+            }
+
+            int number = stoi(digits);
+            while (number >= 26) {
+                number = number - 26; // keep the number in range 0-25
+            }
+
+            char letter = 'A' + number;
+            key = key + letter;
+
+        } else if (isalpha(c)) {
+            key = key + c;
+            i = i + 1;
+
+        } else {
+            i = i + 1; // some other symbol - just skip it
         }
     }
-    return shifts;
+
+    return key;
 }
 
 // ============================================================
@@ -152,7 +198,12 @@ void runCaesar() {
     cout << "Enter shift key (a number): ";
     int key; cin >> key; cin.ignore();
 
-    string result = (mode == 1) ? caesarEncrypt(text, key) : caesarDecrypt(text, key);
+    string result;
+    if (mode == 1) {
+        result = caesarEncrypt(text, key);
+    } else {
+        result = caesarDecrypt(text, key);
+    }
     cout << "Result: " << result << "\n";
 }
 
@@ -160,13 +211,18 @@ void runStream() {
     cout << "1) Encrypt  2) Decrypt: ";
     int mode; cin >> mode; cin.ignore();
 
-    cout << "Enter key (letters only, any length): ";
+    cout << "Enter key: ";
     string key; getline(cin, key);
 
     cout << "Enter text: ";
     string text; getline(cin, text);
 
-    string result = (mode == 1) ? streamCipherEncrypt(text, key) : streamCipherDecrypt(text, key);
+    string result;
+    if (mode == 1) {
+        result = streamCipherEncrypt(text, key);
+    } else {
+        result = streamCipherDecrypt(text, key);
+    }
     cout << "Result: " << result << "\n";
 }
 
@@ -179,10 +235,8 @@ void runOTP() {
         string text; getline(cin, text);
 
         string pad;
-        
-        cout << "Enter key (letters, same length as your message): ";
+        cout << "Enter key: ";
         getline(cin, pad);
-        
 
         string cipher = onePadEncrypt(text, pad);
         cout << "Ciphertext: " << cipher << "\n";
@@ -207,18 +261,24 @@ void runAutoKey() {
 
     cout << "Enter key: ";
     string keyInput; getline(cin, keyInput);
-    vector<int> keyShifts = parseKeyToShifts(keyInput);
+    string key = convertKeyInputToLetters(keyInput);
 
-    if (keyShifts.empty()) {
+    if (key == "") {
         cout << "Key must contain at least one letter or number.\n";
         return;
     }
 
-    string result = (mode == 1) ? autoKeyEncrypt(text, keyShifts) : autoKeyDecrypt(text, keyShifts);
+    string result;
+    if (mode == 1) {
+        result = autoKeyEncrypt(text, key);
+    } else {
+        result = autoKeyDecrypt(text, key);
+    }
     cout << "Result: " << result << "\n";
 }
 
 int main() {
+    srand(time(0));
 
     while (true) {
         cout << "\n--- Cipher Menu ---\n";
