@@ -1,23 +1,15 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-// ============================================================
-// Small helper: shift a single letter by `shift` positions,
-// wrapping around a-z / A-Z. Works for encrypt (positive shift)
-// and decrypt (call with shift = -shift). Non-letters pass
-// through unchanged.
-// ============================================================
 char shiftLetter(char c, int shift) {
     if (c >= 'a' && c <= 'z') {
         return 'a' + ((c - 'a' + shift) % 26 + 26) % 26;
     } else if (c >= 'A' && c <= 'Z') {
         return 'A' + ((c - 'A' + shift) % 26 + 26) % 26;
     }
-    return c; // spaces, punctuation, digits, etc. pass through untouched
+    return c;
 }
 
-// Turns a key letter into a shift amount (A/a -> 0, B/b -> 1, ...).
-// Any non-letter key character is treated as a shift of 0.
 int letterToShift(char k) {
     if (k >= 'a' && k <= 'z') return k - 'a';
     if (k >= 'A' && k <= 'Z') return k - 'A';
@@ -27,25 +19,24 @@ int letterToShift(char k) {
 // ============================================================
 // 1. CAESAR CIPHER
 // ============================================================
+
 string caesarEncrypt(string text, int key) {
     string result = "";
-    for (int i = 0; i < (int)text.size(); i++) {
+    int n = text.size();
+    for (int i = 0; i < int(n); i++) {
         result += shiftLetter(text[i], key);
     }
     return result;
 }
 
 string caesarDecrypt(string text, int key) {
-    // decrypting is just encrypting with the opposite shift
     return caesarEncrypt(text, 26 - (key % 26));
 }
 
 // ============================================================
-// 2. STREAM CIPHER (now: Vigenere-style, mod-26 letter shifts
-//    with a repeating key, instead of XOR on raw bytes)
+// 2. STREAM CIPHER
 // ============================================================
-// Encrypt and decrypt are no longer the same function, because
-// mod-26 addition isn't its own inverse the way XOR is.
+
 string streamCipherEncrypt(string text, string key) {
     string result = "";
     for (int i = 0; i < (int)text.size(); i++) {
@@ -67,12 +58,9 @@ string streamCipherDecrypt(string text, string key) {
 }
 
 // ============================================================
-// 3. ONE-TIME PAD (now: mod-26 letter addition with a pad the
-//    same length as the text, instead of XOR on raw bytes).
-//    This is the classic "letter" form of the Vernam one-time
-//    pad: still unbreakable as long as the pad is truly random,
-//    at least as long as the text, and used only once.
+// 3. ONE-TIME PAD
 // ============================================================
+
 string onePadEncrypt(string text, string pad) {
     string result = "";
     for (int i = 0; i < (int)text.size(); i++) {
@@ -91,7 +79,6 @@ string onePadDecrypt(string text, string pad) {
     return result;
 }
 
-// Random pad made of letters (A-Z) instead of random bytes.
 string generateRandomPad(int length) {
     string pad = "";
     for (int i = 0; i < length; i++) {
@@ -103,16 +90,10 @@ string generateRandomPad(int length) {
 // ============================================================
 // 4. AUTOKEY CIPHER
 // ============================================================
-// Same idea as Caesar, but instead of one fixed shift, each letter
-// gets its own shift value that comes from the key. Once the key
-// runs out, we keep going using the message itself as the key.
-//
-// The key is now a list of shift values (0-25) rather than a plain
-// string, so it can come from letters, from typed numbers, or both -
-// see parseKeyToShifts() below, which builds this list from user input.
+
 string autoKeyEncrypt(string text, vector<int> keyShifts) {
     string result = "";
-    vector<int> fullShifts = keyShifts; // key, then the message extends it
+    vector<int> fullShifts = keyShifts;
     for (char c : text) fullShifts.push_back(letterToShift(c));
 
     for (int i = 0; i < (int)text.size(); i++) {
@@ -123,23 +104,17 @@ string autoKeyEncrypt(string text, vector<int> keyShifts) {
 
 string autoKeyDecrypt(string text, vector<int> keyShifts) {
     string result = "";
-    vector<int> fullShifts = keyShifts; // we build this up as we decrypt each letter
+    vector<int> fullShifts = keyShifts;
 
     for (int i = 0; i < (int)text.size(); i++) {
         int shift = fullShifts[i];
         char plain = shiftLetter(text[i], -shift);
         result += plain;
-        fullShifts.push_back(letterToShift(plain)); // extend with the plaintext we just found
+        fullShifts.push_back(letterToShift(plain));
     }
     return result;
 }
 
-// Turns the raw key input the user typed into a list of shift values
-// (0-25). Supports three styles:
-//   - letters only, no spaces:      "LEMON"        -> one shift per letter
-//   - numbers, space separated:     "11 4 12 14 13" -> one shift per number
-//   - mixed, space separated:       "L 4 O 14 N"    -> letters and numbers together
-// Numbers outside 0-25 are wrapped with mod 26 (e.g. 30 -> 4, -1 -> 25).
 vector<int> parseKeyToShifts(const string &keyInput) {
     vector<int> shifts;
     bool hasSpace = keyInput.find_first_of(" \t") != string::npos;
@@ -163,9 +138,6 @@ vector<int> parseKeyToShifts(const string &keyInput) {
             }
         }
     } else {
-        // No spaces at all: treat each character as its own token.
-        // A run of digits with no spaces is read one digit at a time
-        // (0-9 per character); use spaces to enter shifts of 10-25.
         for (char c : keyInput) {
             if (isdigit((unsigned char)c)) shifts.push_back(c - '0');
             else if (isalpha((unsigned char)c)) shifts.push_back(letterToShift(c));
@@ -177,6 +149,7 @@ vector<int> parseKeyToShifts(const string &keyInput) {
 // ============================================================
 // MENU
 // ============================================================
+
 void runCaesar() {
     cout << "1) Encrypt  2) Decrypt: ";
     int mode; cin >> mode; cin.ignore();
@@ -213,18 +186,11 @@ void runOTP() {
         cout << "Enter plaintext: ";
         string text; getline(cin, text);
 
-        cout << "1) Auto-generate a random pad  2) Type my own pad\n";
-        int padChoice; cin >> padChoice; cin.ignore();
-
         string pad;
-        if (padChoice == 1) {
-            pad = generateRandomPad(text.size());
-            cout << "Generated pad (letters) - SAVE THIS to decrypt later:\n";
-            cout << pad << "\n";
-        } else {
-            cout << "Enter pad (letters, same length as your message): ";
-            getline(cin, pad);
-        }
+        
+        cout << "Enter key (letters, same length as your message): ";
+        getline(cin, pad);
+        
 
         string cipher = onePadEncrypt(text, pad);
         cout << "Ciphertext: " << cipher << "\n";
@@ -232,7 +198,7 @@ void runOTP() {
         cout << "Enter ciphertext: ";
         string text; getline(cin, text);
 
-        cout << "Enter pad (letters - the same one used to encrypt): ";
+        cout << "Enter key: ";
         string pad; getline(cin, pad);
 
         string plain = onePadDecrypt(text, pad);
@@ -247,7 +213,7 @@ void runAutoKey() {
     cout << "Enter text: ";
     string text; getline(cin, text);
 
-    cout << "Enter key (letters and/or numbers 0-25, e.g. \"LEMON\" or \"11 4 12 14 13\"): ";
+    cout << "Enter key: ";
     string keyInput; getline(cin, keyInput);
     vector<int> keyShifts = parseKeyToShifts(keyInput);
 
