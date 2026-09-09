@@ -106,28 +106,72 @@ string generateRandomPad(int length) {
 // Same idea as Caesar, but instead of one fixed shift, each letter
 // gets its own shift value that comes from the key. Once the key
 // runs out, we keep going using the message itself as the key.
-string autoKeyEncrypt(string text, string key) {
+//
+// The key is now a list of shift values (0-25) rather than a plain
+// string, so it can come from letters, from typed numbers, or both -
+// see parseKeyToShifts() below, which builds this list from user input.
+string autoKeyEncrypt(string text, vector<int> keyShifts) {
     string result = "";
-    string fullKey = key + text; // key, then the message extends it
+    vector<int> fullShifts = keyShifts; // key, then the message extends it
+    for (char c : text) fullShifts.push_back(letterToShift(c));
 
     for (int i = 0; i < (int)text.size(); i++) {
-        int shift = letterToShift(fullKey[i]);
-        result += shiftLetter(text[i], shift);
+        result += shiftLetter(text[i], fullShifts[i]);
     }
     return result;
 }
 
-string autoKeyDecrypt(string text, string key) {
+string autoKeyDecrypt(string text, vector<int> keyShifts) {
     string result = "";
-    string fullKey = key; // we build this up as we decrypt each letter
+    vector<int> fullShifts = keyShifts; // we build this up as we decrypt each letter
 
     for (int i = 0; i < (int)text.size(); i++) {
-        int shift = letterToShift(fullKey[i]);
+        int shift = fullShifts[i];
         char plain = shiftLetter(text[i], -shift);
         result += plain;
-        fullKey += plain; // extend the key with the plaintext we just found
+        fullShifts.push_back(letterToShift(plain)); // extend with the plaintext we just found
     }
     return result;
+}
+
+// Turns the raw key input the user typed into a list of shift values
+// (0-25). Supports three styles:
+//   - letters only, no spaces:      "LEMON"        -> one shift per letter
+//   - numbers, space separated:     "11 4 12 14 13" -> one shift per number
+//   - mixed, space separated:       "L 4 O 14 N"    -> letters and numbers together
+// Numbers outside 0-25 are wrapped with mod 26 (e.g. 30 -> 4, -1 -> 25).
+vector<int> parseKeyToShifts(const string &keyInput) {
+    vector<int> shifts;
+    bool hasSpace = keyInput.find_first_of(" \t") != string::npos;
+
+    if (hasSpace) {
+        stringstream ss(keyInput);
+        string token;
+        while (ss >> token) {
+            bool isNumber = !token.empty();
+            for (size_t j = 0; j < token.size(); j++) {
+                char c = token[j];
+                if (!isdigit((unsigned char)c) && !(c == '-' && j == 0)) { isNumber = false; break; }
+            }
+            if (isNumber && token != "-") {
+                int num = stoi(token);
+                shifts.push_back(((num % 26) + 26) % 26);
+            } else {
+                for (char c : token) {
+                    if (isalpha((unsigned char)c)) shifts.push_back(letterToShift(c));
+                }
+            }
+        }
+    } else {
+        // No spaces at all: treat each character as its own token.
+        // A run of digits with no spaces is read one digit at a time
+        // (0-9 per character); use spaces to enter shifts of 10-25.
+        for (char c : keyInput) {
+            if (isdigit((unsigned char)c)) shifts.push_back(c - '0');
+            else if (isalpha((unsigned char)c)) shifts.push_back(letterToShift(c));
+        }
+    }
+    return shifts;
 }
 
 // ============================================================
@@ -203,10 +247,16 @@ void runAutoKey() {
     cout << "Enter text: ";
     string text; getline(cin, text);
 
-    cout << "Enter key (letters): ";
-    string key; getline(cin, key);
+    cout << "Enter key (letters and/or numbers 0-25, e.g. \"LEMON\" or \"11 4 12 14 13\"): ";
+    string keyInput; getline(cin, keyInput);
+    vector<int> keyShifts = parseKeyToShifts(keyInput);
 
-    string result = (mode == 1) ? autoKeyEncrypt(text, key) : autoKeyDecrypt(text, key);
+    if (keyShifts.empty()) {
+        cout << "Key must contain at least one letter or number.\n";
+        return;
+    }
+
+    string result = (mode == 1) ? autoKeyEncrypt(text, keyShifts) : autoKeyDecrypt(text, keyShifts);
     cout << "Result: " << result << "\n";
 }
 
