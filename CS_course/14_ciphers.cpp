@@ -79,14 +79,6 @@ string onePadDecrypt(string text, string pad) {
     return result;
 }
 
-string generateRandomPad(int length) {
-    string pad = "";
-    for (int i = 0; i < length; i++) {
-        pad += (char)('A' + rand() % 26);
-    }
-    return pad;
-}
-
 // ============================================================
 // 4. AUTOKEY CIPHER
 // ============================================================
@@ -227,7 +219,6 @@ void runAutoKey() {
 }
 
 int main() {
-    srand(time(0));
 
     while (true) {
         cout << "\n--- Cipher Menu ---\n";
