@@ -189,9 +189,6 @@ string convertKeyInputToLetters(string keyInput) {
 // ============================================================
 
 void runCaesar() {
-    cout << "1) Encrypt  2) Decrypt: ";
-    int mode; cin >> mode; cin.ignore();
-
     cout << "Enter text: ";
     string text; getline(cin, text);
 
@@ -199,18 +196,17 @@ void runCaesar() {
     int key; cin >> key; cin.ignore();
 
     string result;
-    if (mode == 1) {
-        result = caesarEncrypt(text, key);
-    } else {
-        result = caesarDecrypt(text, key);
-    }
+    result = caesarEncrypt(text, key);
     cout << "Result: " << result << "\n";
+    cout << "Do you want to decrypt? y for YES, n for No" << endl;
+    char conf; cin >> conf;
+    if(conf == 'y'){
+        result = caesarDecrypt(result, key);
+        cout << "Result: " << result << "\n";
+    }
 }
 
 void runStream() {
-    cout << "1) Encrypt  2) Decrypt: ";
-    int mode; cin >> mode; cin.ignore();
-
     cout << "Enter key: ";
     string key; getline(cin, key);
 
@@ -218,19 +214,17 @@ void runStream() {
     string text; getline(cin, text);
 
     string result;
-    if (mode == 1) {
-        result = streamCipherEncrypt(text, key);
-    } else {
-        result = streamCipherDecrypt(text, key);
-    }
+    result = streamCipherEncrypt(text, key);
     cout << "Result: " << result << "\n";
+    cout << "Do you want to decrypt? y for YES, n for No" << endl;
+    char conf; cin >> conf;
+    if (conf == 'y') {
+        result = streamCipherDecrypt(result, key);
+    }
+    
 }
 
 void runOTP() {
-    cout << "1) Encrypt  2) Decrypt: ";
-    int mode; cin >> mode; cin.ignore();
-
-    if (mode == 1) {
         cout << "Enter plaintext: ";
         string text; getline(cin, text);
 
@@ -240,16 +234,14 @@ void runOTP() {
 
         string cipher = onePadEncrypt(text, pad);
         cout << "Ciphertext: " << cipher << "\n";
-    } else {
-        cout << "Enter ciphertext: ";
-        string text; getline(cin, text);
 
-        cout << "Enter key: ";
-        string pad; getline(cin, pad);
+        cout << "Do you want to decrypt? y for YES, n for No" << endl;
+        char conf; cin >> conf;
 
-        string plain = onePadDecrypt(text, pad);
+        if (conf == 'y'){
+        string plain = onePadDecrypt(cipher, pad);
         cout << "Plaintext: " << plain << "\n";
-    }
+        }
 }
 
 void runAutoKey() {
@@ -269,12 +261,15 @@ void runAutoKey() {
     }
 
     string result;
-    if (mode == 1) {
-        result = autoKeyEncrypt(text, key);
-    } else {
-        result = autoKeyDecrypt(text, key);
-    }
+    result = autoKeyEncrypt(text, key);
     cout << "Result: " << result << "\n";
+    cout << "Do you want to decrypt? y for YES, n for No" << endl;
+        char conf; cin >> conf;
+    if (conf == 'y') {
+        result = autoKeyDecrypt(result, key);
+        cout << "Result: " << result << "\n";
+    }
+   
 }
 
 int main() {
