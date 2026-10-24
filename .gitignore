@@ -1,0 +1,13 @@
+# Compiled binaries
+*.exe
+*.out
+
+# Competitive Companion cache
+.cph/
+
+# Jupyter / editor scratch
+.ipynb_checkpoints/
+*tempCodeRunnerFile*
+
+# Python
+__pycache__/
