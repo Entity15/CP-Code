@@ -2,31 +2,19 @@
 using namespace std;
 
 int main(){
-    
+
     int n; cin >> n;
-    vector <int> max, sum;
+    vector<long long> coins(n);
+    for(auto &c : coins) cin >> c;
 
-    for(int i = 0; i < n; i++){
-        int x; cin >> x;
-        max.push_back(x);
+    sort(coins.begin(), coins.end());
+
+    // every sum in [1, reach] can be formed so far
+    long long reach = 0;
+    for(auto c : coins){
+        if(c > reach + 1) break;
+        reach += c;
     }
 
-    sort(max.begin(), max.end());
-
-    for(int i = 0; i < n; i++){
-        sum[i] = i;
-        for(auto a : max){
-            sum[i + a] = i + a;
-        }
-        if(sum[i + 1] != i + 1){
-            cout << i + 1 << endl;
-            break;
-        }
-        if(sum[i - 1] != i - 1){
-            cout << i - 1 << endl;
-            break;
-        }
-    }
-    
+    cout << reach + 1 << endl;
 }
-//farsi na

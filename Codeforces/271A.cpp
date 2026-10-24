@@ -2,12 +2,15 @@
 using namespace std;
 
 int main(){
-    
-    int n, x = 0, a[4]; cin >> n;
-    int dn = n;
-    bool distinct = true;
-    for(int i = 0; i < 4; i++){
-        a[i] = dn % 10;
-        dn /= 10;
+
+    int n; cin >> n;
+
+    for(int y = n + 1; ; y++){
+        string s = to_string(y);
+        set<char> digits(s.begin(), s.end());
+        if(digits.size() == s.size()){
+            cout << y << endl;
+            return 0;
+        }
     }
 }
