@@ -1,5 +1,5 @@
-// DES (ECB mode) - encrypt or decrypt text
-// Everything is inside main() on purpose.
+// DES (ECB mode) - encrypt text, then optionally decrypt it
+// Everything is inside main() on purpose. The program runs once and ends.
 // Bits are stored one per int (0 or 1), so it is easy to follow the steps.
 #include <iostream>
 #include <string>
@@ -78,168 +78,206 @@ int main() {
           {7,11,4,1,9,12,14,2,0,6,10,13,15,3,5,8},
           {2,1,14,7,4,10,8,13,15,12,9,0,3,5,6,11} } };
 
-    string hx = "0123456789abcdef0123456789ABCDEF";   // hex digits
+    string hx = "0123456789abcdef";   // hex digits
 
-    // ---------- 2. main loop ----------
-    string ch, data, key, ans;
-    while (1) {
-        cout << "\n1 = Encrypt   2 = Decrypt   0 = Exit\nYour choice: ";
-        if (!getline(cin, ch)) break;      // end of input: leave
-        if (ch == "0") break;
-        if (ch != "1" && ch != "2") {
-            cout << "Wrong choice, try again.\n";
-            continue;
+    // ---------- 2. ask for the text and the key ----------
+    string text, key, hexs, ans;
+    cout << "Enter the text to encrypt: ";
+    if (!getline(cin, text)) return 0;
+
+    key = "";
+    while (key.length() != 8) {
+        cout << "Enter the key (exactly 8 characters): ";
+        if (!getline(cin, key)) return 0;
+    }
+
+    // key bits, one per int, 8 bits per character
+    int kb[64];
+    for (int i = 0; i < 8; i++)
+        for (int j = 0; j < 8; j++)
+            kb[8 * i + j] = ((unsigned char)key[i] >> (7 - j)) & 1;
+
+    // PC-1: split the 64 key bits into two halves c and d (28 bits each)
+    int c[28], d[28];
+    for (int i = 0; i < 28; i++) {
+        c[i] = kb[pc1[i] - 1];
+        d[i] = kb[pc1[28 + i] - 1];
+    }
+
+    // make the 16 round keys
+    int sk[16][48];
+    for (int r = 0; r < 16; r++) {
+        for (int s = 0; s < shf[r]; s++) {              // rotate left
+            int t = c[0];
+            for (int i = 0; i < 27; i++) c[i] = c[i + 1];
+            c[27] = t;
+            t = d[0];
+            for (int i = 0; i < 27; i++) d[i] = d[i + 1];
+            d[27] = t;
         }
-
-        int dir = (ch == "1") ? 1 : 2;   // 1 = encrypt, 2 = decrypt
-        int sk[16][48];                  // the 16 round keys, 48 bits each
-        int first = 1;
-        int again = 1;
-
-        while (again) {
-            // ask for input only the first time, after that we use the last result
-            if (first) {
-                if (dir == 1) cout << "Enter the text to encrypt: ";
-                else          cout << "Enter the hex to decrypt: ";
-                getline(cin, data);
-
-                key = "";
-                while (key.length() != 8) {
-                    cout << "Enter the key (exactly 8 characters): ";
-                    if (!getline(cin, key)) return 0;   // end of input: leave
-                }
-
-                // key bits, one per int, 8 bits per character
-                int kb[64];
-                for (int i = 0; i < 8; i++)
-                    for (int j = 0; j < 8; j++)
-                        kb[8 * i + j] = ((unsigned char)key[i] >> (7 - j)) & 1;
-
-                // PC-1: split the 64 key bits into two halves c and d (28 bits each)
-                int c[28], d[28];
-                for (int i = 0; i < 28; i++) {
-                    c[i] = kb[pc1[i] - 1];
-                    d[i] = kb[pc1[28 + i] - 1];
-                }
-
-                // make the 16 round keys
-                for (int r = 0; r < 16; r++) {
-                    for (int s = 0; s < shf[r]; s++) {          // rotate left
-                        int t = c[0];
-                        for (int i = 0; i < 27; i++) c[i] = c[i + 1];
-                        c[27] = t;
-                        t = d[0];
-                        for (int i = 0; i < 27; i++) d[i] = d[i + 1];
-                        d[27] = t;
-                    }
-                    for (int j = 0; j < 48; j++) {              // PC-2
-                        int q = pc2[j] - 1;
-                        sk[r][j] = (q < 28) ? c[q] : d[q - 28];
-                    }
-                }
-            }
-
-            // turn the input text (or hex) into bytes
-            string buf = "";
-            if (dir == 1) {
-                buf = data;
-            } else {
-                for (size_t i = 0; i + 1 < data.length(); i += 2)
-                    buf += (char)((hx.find(data[i]) % 16) * 16 + hx.find(data[i + 1]) % 16);
-            }
-            int n = (buf.length() + 7) / 8 * 8;   // pad with zeros to 8 bytes
-            buf.resize(n, '\0');
-
-            string out = "";
-            for (int blk = 0; blk < n; blk += 8) {
-                // 8 bytes -> 64 bits
-                int bt[64];
-                for (int i = 0; i < 8; i++)
-                    for (int j = 0; j < 8; j++)
-                        bt[8 * i + j] = ((unsigned char)buf[blk + i] >> (7 - j)) & 1;
-
-                // initial permutation, then split into left and right halves
-                int x[64];
-                for (int i = 0; i < 64; i++) x[i] = bt[ip[i] - 1];
-                int l[32], r[32];
-                for (int i = 0; i < 32; i++) {
-                    l[i] = x[i];
-                    r[i] = x[32 + i];
-                }
-
-                // 16 rounds
-                for (int rnd = 0; rnd < 16; rnd++) {
-                    int kk = (dir == 1) ? rnd : 15 - rnd;   // decrypt uses the keys backwards
-
-                    // expand R to 48 bits and mix with the round key
-                    int er[48];
-                    for (int j = 0; j < 48; j++)
-                        er[j] = r[ee[j] - 1] ^ sk[kk][j];
-
-                    // 8 S-boxes: 6 bits in, 4 bits out
-                    int so[32];
-                    for (int s = 0; s < 8; s++) {
-                        int row = er[6 * s] * 2 + er[6 * s + 5];
-                        int col = er[6 * s + 1] * 8 + er[6 * s + 2] * 4 + er[6 * s + 3] * 2 + er[6 * s + 4];
-                        int v = sbx[s][row][col];
-                        so[4 * s]     = (v >> 3) & 1;
-                        so[4 * s + 1] = (v >> 2) & 1;
-                        so[4 * s + 2] = (v >> 1) & 1;
-                        so[4 * s + 3] = v & 1;
-                    }
-
-                    // P permutation, then new R = L xor f, new L = old R
-                    int f[32];
-                    for (int j = 0; j < 32; j++) f[j] = so[pp[j] - 1];
-                    for (int j = 0; j < 32; j++) {
-                        int t = r[j];
-                        r[j] = l[j] ^ f[j];
-                        l[j] = t;
-                    }
-                }
-
-                // swap the halves (R then L), then final permutation
-                int pre[64];
-                for (int i = 0; i < 32; i++) {
-                    pre[i] = r[i];
-                    pre[32 + i] = l[i];
-                }
-                int y[64];
-                for (int i = 0; i < 64; i++) y[i] = pre[fp[i] - 1];
-
-                // 64 bits -> 8 bytes
-                for (int i = 0; i < 8; i++) {
-                    int v = 0;
-                    for (int j = 0; j < 8; j++) v = v * 2 + y[8 * i + j];
-                    out += (char)v;
-                }
-            }
-
-            if (dir == 1) {
-                data = "";
-                for (size_t i = 0; i < out.length(); i++) {     // bytes -> hex
-                    int v = (unsigned char)out[i];
-                    data += hx[v / 16];
-                    data += hx[v % 16];
-                }
-                cout << "Encrypted (hex): " << data << "\n";
-            } else {
-                while (!out.empty() && out.back() == '\0')      // remove the zero padding
-                    out.pop_back();
-                data = out;
-                cout << "Decrypted text: " << data << "\n";
-            }
-
-            // ask if we want to do the opposite with this result
-            first = 0;
-            if (dir == 1) cout << "Want to decrypt it now too? (y/n): ";
-            else          cout << "Want to encrypt it now too? (y/n): ";
-            getline(cin, ans);
-            if (ans == "y" || ans == "Y") dir = 3 - dir;   // 1 becomes 2, 2 becomes 1
-            else again = 0;
+        for (int j = 0; j < 48; j++) {                  // PC-2
+            int q = pc2[j] - 1;
+            sk[r][j] = (q < 28) ? c[q] : d[q - 28];
         }
     }
 
-    cout << "Bye!\n";
+    // ---------- 3. ENCRYPT (and decrypt, below, uses the same steps) ----------
+    // each 8-byte block goes through the 16 rounds
+    string buf = text;
+    int n = (buf.length() + 7) / 8 * 8;                 // pad with zeros to 8 bytes
+    buf.resize(n, '\0');
+
+    string out = "";
+    for (int blk = 0; blk < n; blk += 8) {
+        // 8 bytes -> 64 bits
+        int bt[64];
+        for (int i = 0; i < 8; i++)
+            for (int j = 0; j < 8; j++)
+                bt[8 * i + j] = ((unsigned char)buf[blk + i] >> (7 - j)) & 1;
+
+        // initial permutation, then split into left and right halves
+        int x[64];
+        for (int i = 0; i < 64; i++) x[i] = bt[ip[i] - 1];
+        int l[32], r[32];
+        for (int i = 0; i < 32; i++) {
+            l[i] = x[i];
+            r[i] = x[32 + i];
+        }
+
+        // 16 rounds
+        for (int rnd = 0; rnd < 16; rnd++) {
+            int kk = rnd;                               // encrypt uses the keys forwards
+
+            // expand R to 48 bits and mix with the round key
+            int er[48];
+            for (int j = 0; j < 48; j++)
+                er[j] = r[ee[j] - 1] ^ sk[kk][j];
+
+            // 8 S-boxes: 6 bits in, 4 bits out
+            int so[32];
+            for (int s = 0; s < 8; s++) {
+                int row = er[6 * s] * 2 + er[6 * s + 5];
+                int col = er[6 * s + 1] * 8 + er[6 * s + 2] * 4 + er[6 * s + 3] * 2 + er[6 * s + 4];
+                int v = sbx[s][row][col];
+                so[4 * s]     = (v >> 3) & 1;
+                so[4 * s + 1] = (v >> 2) & 1;
+                so[4 * s + 2] = (v >> 1) & 1;
+                so[4 * s + 3] = v & 1;
+            }
+
+            // P permutation, then new R = L xor f, new L = old R
+            int f[32];
+            for (int j = 0; j < 32; j++) f[j] = so[pp[j] - 1];
+            for (int j = 0; j < 32; j++) {
+                int t = r[j];
+                r[j] = l[j] ^ f[j];
+                l[j] = t;
+            }
+        }
+
+        // swap the halves (R then L), then final permutation
+        int pre[64];
+        for (int i = 0; i < 32; i++) {
+            pre[i] = r[i];
+            pre[32 + i] = l[i];
+        }
+        int y[64];
+        for (int i = 0; i < 64; i++) y[i] = pre[fp[i] - 1];
+
+        // 64 bits -> 8 bytes
+        for (int i = 0; i < 8; i++) {
+            int v = 0;
+            for (int j = 0; j < 8; j++) v = v * 2 + y[8 * i + j];
+            out += (char)v;
+        }
+    }
+
+    // bytes -> hex, so it can be copied and decrypted later
+    hexs = "";
+    for (size_t i = 0; i < out.length(); i++) {
+        int v = (unsigned char)out[i];
+        hexs += hx[v / 16];
+        hexs += hx[v % 16];
+    }
+    cout << "Encrypted (hex): " << hexs << "\n";
+
+    // ---------- 4. ask if we want to decrypt ----------
+    cout << "Do you want to decrypt it? (y/n): ";
+    if (!getline(cin, ans)) return 0;
+    if (ans != "y" && ans != "Y") {
+        cout << "Bye!\n";
+        return 0;
+    }
+
+    // ---------- 5. DECRYPT ----------
+    // hex -> bytes
+    string hbuf = "";
+    string hx2 = "0123456789abcdef0123456789ABCDEF";     // capitals also work
+    for (size_t i = 0; i + 1 < hexs.length(); i += 2)
+        hbuf += (char)((hx2.find(hexs[i]) % 16) * 16 + hx2.find(hexs[i + 1]) % 16);
+
+    int dn = (hbuf.length() + 7) / 8 * 8;
+    hbuf.resize(dn, '\0');
+
+    string res = "";
+    for (int blk = 0; blk < dn; blk += 8) {
+        int bt[64];
+        for (int i = 0; i < 8; i++)
+            for (int j = 0; j < 8; j++)
+                bt[8 * i + j] = ((unsigned char)hbuf[blk + i] >> (7 - j)) & 1;
+
+        int x[64];
+        for (int i = 0; i < 64; i++) x[i] = bt[ip[i] - 1];
+        int l[32], r[32];
+        for (int i = 0; i < 32; i++) {
+            l[i] = x[i];
+            r[i] = x[32 + i];
+        }
+
+        for (int rnd = 0; rnd < 16; rnd++) {
+            int kk = 15 - rnd;                          // decrypt uses the keys backwards
+
+            int er[48];
+            for (int j = 0; j < 48; j++)
+                er[j] = r[ee[j] - 1] ^ sk[kk][j];
+
+            int so[32];
+            for (int s = 0; s < 8; s++) {
+                int row = er[6 * s] * 2 + er[6 * s + 5];
+                int col = er[6 * s + 1] * 8 + er[6 * s + 2] * 4 + er[6 * s + 3] * 2 + er[6 * s + 4];
+                int v = sbx[s][row][col];
+                so[4 * s]     = (v >> 3) & 1;
+                so[4 * s + 1] = (v >> 2) & 1;
+                so[4 * s + 2] = (v >> 1) & 1;
+                so[4 * s + 3] = v & 1;
+            }
+
+            int f[32];
+            for (int j = 0; j < 32; j++) f[j] = so[pp[j] - 1];
+            for (int j = 0; j < 32; j++) {
+                int t = r[j];
+                r[j] = l[j] ^ f[j];
+                l[j] = t;
+            }
+        }
+
+        int pre[64];
+        for (int i = 0; i < 32; i++) {
+            pre[i] = r[i];
+            pre[32 + i] = l[i];
+        }
+        int y[64];
+        for (int i = 0; i < 64; i++) y[i] = pre[fp[i] - 1];
+
+        for (int i = 0; i < 8; i++) {
+            int v = 0;
+            for (int j = 0; j < 8; j++) v = v * 2 + y[8 * i + j];
+            res += (char)v;
+        }
+    }
+
+    while (!res.empty() && res.back() == '\0')          // remove the zero padding
+        res.pop_back();
+    cout << "Decrypted text: " << res << "\n";
     return 0;
 }
