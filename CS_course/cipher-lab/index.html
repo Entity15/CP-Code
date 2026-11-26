@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cryptographic Workbench — Signal &amp; Transform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <div class="sheet">
+      <header class="masthead">
+        <div class="masthead-meta">
+          <!-- <span class="tag">SPECIMEN DESK</span>
+          <span class="folio">NO. 12 // LOCAL ENGINE</span> -->
+        </div>
+        <div class="masthead-main">
+          <h1>Cryptographic Workbench</h1>
+          <p class="subtitle">
+            Select a cipher, supply input and key material, then execute forward
+            or inverse passes.
+          </p>
+        </div>
+      </header>
+
+      <main class="desk">
+        <section class="col-inputs" aria-label="Cipher inputs">
+          <div class="block">
+            <label for="alg">Ciphers</label>
+            <select id="alg"></select>
+            <p class="hint" id="hint"></p>
+          </div>
+
+          <div class="block">
+            <label for="txt">Source Message</label>
+            <textarea
+              id="txt"
+              class="field"
+              rows="4"
+              spellcheck="false"
+            ></textarea>
+          </div>
+
+          <div class="block" id="keyRow">
+            <label for="key" id="lk">Key</label>
+            <div class="keyline">
+              <input
+                id="key"
+                class="field"
+                autocomplete="off"
+                spellcheck="false"
+              />
+              <button id="rand" class="mini" type="button" hidden>
+                Generate
+              </button>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button id="enc" class="cap" type="button">Encrypt?</button>
+          </div>
+        </section>
+
+        <section class="col-outputs" aria-label="Cipher results and trace">
+          <div class="block">
+            <label for="out">Result Stream</label>
+            <textarea id="out" class="paper" rows="4" readonly></textarea>
+            <p class="note" id="note"></p>
+          </div>
+
+          <section id="decWrap" class="decrypt" hidden>
+            <button id="dec" class="cap teal" type="button">Decrypt?</button>
+
+            <div id="backWrap" class="back-panel" hidden>
+              <label for="back">Recovered Plaintext</label>
+              <textarea id="back" class="paper" rows="3" readonly></textarea>
+            </div>
+          </section>
+
+          <details id="stepsBox" class="steps" hidden>
+            <summary>Execution Trace</summary>
+            <pre id="steps"></pre>
+          </details>
+        </section>
+      </main>
+
+      <footer class="colophon">
+        <!-- <span>Client-side execution only</span>
+        <span class="dot" aria-hidden="true">/</span>
+        <span>Educational &amp; lab study use</span> -->
+      </footer>
+    </div>
+
+    <!-- shared helpers first, then one file per cipher, then the page logic -->
+    <script src="js/lib/helpers.js"></script>
+    <script src="js/lib/hill-core.js"></script>
+    <script src="js/lib/rsa-core.js"></script>
+    <script src="js/lib/aes-core.js"></script>
+    <script src="js/lib/des-core.js"></script>
+    <script src="js/lib/ecb.js"></script>
+    <script src="js/lib/registry.js"></script>
+
+    <script src="js/ciphers/caesar.js"></script>
+    <script src="js/ciphers/stream.js"></script>
+    <script src="js/ciphers/vigenere.js"></script>
+    <script src="js/ciphers/autokey.js"></script>
+    <script src="js/ciphers/vernam.js"></script>
+    <script src="js/ciphers/hill.js"></script>
+    <script src="js/ciphers/playfair.js"></script>
+    <script src="js/ciphers/columnar.js"></script>
+    <script src="js/ciphers/rsa.js"></script>
+    <script src="js/ciphers/aes.js"></script>
+    <script src="js/ciphers/des.js"></script>
+    <script src="js/ciphers/sha1.js"></script>
+
+    <script src="js/config.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>
